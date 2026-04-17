@@ -7,6 +7,7 @@ export declare class StreamingCostTracker {
     private readonly onToken?;
     private readonly callbackInterval;
     private readonly outRate;
+    private readonly inRate;
     private readonly inputCost;
     private outputChunks;
     private estimatedCost;

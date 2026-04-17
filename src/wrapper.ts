@@ -35,6 +35,7 @@ const INPUT_RATES: Record<string, number> = {
 
 export class StreamingCostTracker {
   private readonly outRate: number
+  private readonly inRate: number
   private readonly inputCost: number
   private outputChunks: number = 0
   private estimatedCost: number = 0
@@ -48,8 +49,8 @@ export class StreamingCostTracker {
   ) {
     const key = `${provider}/${model}`
     this.outRate = OUTPUT_RATES[key] ?? 0
-    const inRate = INPUT_RATES[key] ?? 0
-    this.inputCost = inRate * inputTokens
+    this.inRate = INPUT_RATES[key] ?? 0
+    this.inputCost = this.inRate * inputTokens
     this.callbackInterval = Math.max(1, callbackInterval)
   }
 
@@ -71,11 +72,8 @@ export class StreamingCostTracker {
     actualInputTokens: number = 0,
     actualOutputTokens: number = 0,
   ): number {
-    const inRate = this.inputCost > 0
-      ? this.inputCost / Math.max(1, actualInputTokens || 1)
-      : 0
     const final = actualInputTokens > 0 || actualOutputTokens > 0
-      ? inRate * actualInputTokens +
+      ? this.inRate * actualInputTokens +
         this.outRate * actualOutputTokens
       : this.estimatedCost
     if (this.onToken) {

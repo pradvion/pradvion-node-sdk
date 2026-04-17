@@ -70,6 +70,7 @@ class StreamingCostTracker {
     onToken;
     callbackInterval;
     outRate;
+    inRate;
     inputCost;
     outputChunks = 0;
     estimatedCost = 0;
@@ -78,8 +79,8 @@ class StreamingCostTracker {
         this.callbackInterval = callbackInterval;
         const key = `${provider}/${model}`;
         this.outRate = OUTPUT_RATES[key] ?? 0;
-        const inRate = INPUT_RATES[key] ?? 0;
-        this.inputCost = inRate * inputTokens;
+        this.inRate = INPUT_RATES[key] ?? 0;
+        this.inputCost = this.inRate * inputTokens;
         this.callbackInterval = Math.max(1, callbackInterval);
     }
     onChunk() {
@@ -95,11 +96,8 @@ class StreamingCostTracker {
         return this.estimatedCost;
     }
     finalize(actualInputTokens = 0, actualOutputTokens = 0) {
-        const inRate = this.inputCost > 0
-            ? this.inputCost / Math.max(1, actualInputTokens || 1)
-            : 0;
         const final = actualInputTokens > 0 || actualOutputTokens > 0
-            ? inRate * actualInputTokens +
+            ? this.inRate * actualInputTokens +
                 this.outRate * actualOutputTokens
             : this.estimatedCost;
         if (this.onToken) {
