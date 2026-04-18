@@ -100,25 +100,4 @@ export interface SignalPayload {
     metadata?: Record<string, unknown>;
 }
 export type QueuePayload = TrackPayload | SignalPayload;
-export interface ForecastResult {
-    projectedMonthly: number;
-    dailyRate: number;
-    daysElapsed: number;
-    currentSpend: number;
-    monthlyBudget?: number;
-    willExceedBudget: boolean;
-    daysUntilBudget?: number;
-    percentOfBudget?: number;
-}
-export interface ComparisonResult {
-    costs: Record<string, number>;
-    inputTokens: number;
-    outputTokens: number;
-    cheapest: string;
-    mostExpensive: string;
-    maxSavingsPct: number;
-    sortedByCost(): Array<[string, number]>;
-    savingsVs(current: string, compare: string): number | null;
-    formatTable(): string;
-}
 //# sourceMappingURL=types.d.ts.map

@@ -144,27 +144,6 @@ describe('pradvion public API', () => {
     expect(typeof pradvion.SDK_VERSION).toBe('string')
   })
 
-  test('forecastMonthly accessible from index', () => {
-    const result = pradvion.forecastMonthly({
-      daysElapsed: 15,
-      currentSpend: 150,
-    })
-    expect(result.projectedMonthly).toBe(300)
-  })
-
-  test('compareCost accessible from index', () => {
-    const result = pradvion.compareCost({
-      inputTokens: 1000,
-      outputTokens: 500,
-    })
-    expect(Object.keys(result.costs).length).toBeGreaterThan(0)
-  })
-
-  test('getBudgetTracker accessible from index', () => {
-    const tracker = pradvion.getBudgetTracker()
-    expect(tracker).toBeDefined()
-  })
-
   test('context() runs fn with context', async () => {
     pradvion.init({
       apiKey: 'test_key',

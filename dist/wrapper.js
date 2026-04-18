@@ -37,79 +37,10 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StreamingCostTracker = void 0;
 exports.wrapOpenAI = wrapOpenAI;
 exports.wrapAnthropic = wrapAnthropic;
 const crypto = __importStar(require("crypto"));
 const context_1 = require("./context");
-const OUTPUT_RATES = {
-    'openai/gpt-4o': 0.00001,
-    'openai/gpt-4o-mini': 0.0000006,
-    'openai/gpt-4-turbo': 0.00003,
-    'openai/gpt-3.5-turbo': 0.0000015,
-    'openai/o1': 0.00006,
-    'openai/o1-mini': 0.0000044,
-    'openai/o3-mini': 0.0000044,
-    'anthropic/claude-3-5-sonnet-20241022': 0.000015,
-    'anthropic/claude-3-haiku-20240307': 0.00000125,
-    'anthropic/claude-3-opus-20240229': 0.000075,
-};
-const INPUT_RATES = {
-    'openai/gpt-4o': 0.0000025,
-    'openai/gpt-4o-mini': 0.00000015,
-    'openai/gpt-4-turbo': 0.00001,
-    'openai/gpt-3.5-turbo': 0.0000005,
-    'openai/o1': 0.000015,
-    'openai/o1-mini': 0.0000011,
-    'openai/o3-mini': 0.0000011,
-    'anthropic/claude-3-5-sonnet-20241022': 0.000003,
-    'anthropic/claude-3-haiku-20240307': 0.00000025,
-    'anthropic/claude-3-opus-20240229': 0.000015,
-};
-class StreamingCostTracker {
-    onToken;
-    callbackInterval;
-    outRate;
-    inRate;
-    inputCost;
-    outputChunks = 0;
-    estimatedCost = 0;
-    constructor(provider, model, inputTokens = 0, onToken, callbackInterval = 5) {
-        this.onToken = onToken;
-        this.callbackInterval = callbackInterval;
-        const key = `${provider}/${model}`;
-        this.outRate = OUTPUT_RATES[key] ?? 0;
-        this.inRate = INPUT_RATES[key] ?? 0;
-        this.inputCost = this.inRate * inputTokens;
-        this.callbackInterval = Math.max(1, callbackInterval);
-    }
-    onChunk() {
-        this.outputChunks++;
-        this.estimatedCost = (this.inputCost + this.outRate * this.outputChunks);
-        if (this.onToken &&
-            this.outputChunks % this.callbackInterval === 0) {
-            try {
-                this.onToken(this.estimatedCost);
-            }
-            catch { }
-        }
-        return this.estimatedCost;
-    }
-    finalize(actualInputTokens = 0, actualOutputTokens = 0) {
-        const final = actualInputTokens > 0 || actualOutputTokens > 0
-            ? this.inRate * actualInputTokens +
-                this.outRate * actualOutputTokens
-            : this.estimatedCost;
-        if (this.onToken) {
-            try {
-                this.onToken(final);
-            }
-            catch { }
-        }
-        return final;
-    }
-}
-exports.StreamingCostTracker = StreamingCostTracker;
 function wrapOpenAI(client, pradvion) {
     return new Proxy(client, {
         get(target, prop) {
@@ -138,17 +69,14 @@ function createOpenAICreateWrapper(originalCreate, pradvion) {
     return async function (params, options) {
         const model = params?.model ?? 'unknown';
         const isStream = params?.stream === true;
-        const onToken = params?.onToken;
         const ctx = (0, context_1.getEffectiveContext)();
         const startTime = Date.now();
         const requestId = crypto.randomUUID();
-        const cleanParams = { ...params };
-        delete cleanParams.onToken;
         if (isStream) {
-            return handleOpenAIStream(originalCreate, cleanParams, options, pradvion, model, ctx, startTime, requestId, onToken);
+            return handleOpenAIStream(originalCreate, params, options, pradvion, model, ctx, startTime, requestId);
         }
         try {
-            const response = await originalCreate(cleanParams, options);
+            const response = await originalCreate(params, options);
             const latencyMs = Date.now() - startTime;
             const usage = response?.usage ?? {};
             pradvion.track({
@@ -186,8 +114,7 @@ function createOpenAICreateWrapper(originalCreate, pradvion) {
         }
     };
 }
-async function* handleOpenAIStream(originalCreate, params, options, pradvion, model, ctx, startTime, requestId, onToken) {
-    const tracker = new StreamingCostTracker('openai', model, 0, onToken);
+async function* handleOpenAIStream(originalCreate, params, options, pradvion, model, ctx, startTime, requestId) {
     let inputTokens = 0;
     let outputTokens = 0;
     let chunkCount = 0;
@@ -196,7 +123,6 @@ async function* handleOpenAIStream(originalCreate, params, options, pradvion, mo
         const stream = await originalCreate(params, options);
         for await (const chunk of stream) {
             chunkCount++;
-            tracker.onChunk();
             if (chunk?.usage) {
                 inputTokens = chunk.usage.prompt_tokens ?? 0;
                 outputTokens = chunk.usage.completion_tokens ?? 0;
@@ -218,7 +144,6 @@ async function* handleOpenAIStream(originalCreate, params, options, pradvion, mo
         throw err;
     }
     finally {
-        tracker.finalize(inputTokens, outputTokens);
         const latencyMs = Date.now() - startTime;
         if (statusCode === 200) {
             pradvion.track({

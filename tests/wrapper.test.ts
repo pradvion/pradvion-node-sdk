@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import { PradvionClient } from '../src/client'
-import { wrapOpenAI, wrapAnthropic, StreamingCostTracker } from '../src/wrapper'
+import { wrapOpenAI, wrapAnthropic } from '../src/wrapper'
 
 function makeClient(): { client: PradvionClient; tmpDir: string } {
   const tmpDir = fs.mkdtempSync(
@@ -15,120 +15,6 @@ function makeClient(): { client: PradvionClient; tmpDir: string } {
   })
   return { client, tmpDir }
 }
-
-describe('StreamingCostTracker', () => {
-
-  test('known model has rates', () => {
-    const t = new StreamingCostTracker('openai', 'gpt-4o', 1000)
-    expect(t.onChunk()).toBeGreaterThan(0)
-  })
-
-  test('unknown model has zero rates', () => {
-    const t = new StreamingCostTracker('unknown', 'unknown-model', 100)
-    const cost = t.onChunk()
-    expect(cost).toBe(0)
-  })
-
-  test('input cost pre-computed', () => {
-    const t = new StreamingCostTracker('openai', 'gpt-4o', 1000)
-    // $0.0000025 * 1000 = $0.0025 input cost
-    // After 1 chunk, output cost adds tiny amount
-    const cost = t.onChunk()
-    expect(cost).toBeGreaterThan(0.0025)
-  })
-
-  test('chunk count increments', () => {
-    const t = new StreamingCostTracker('openai', 'gpt-4o-mini', 0)
-    t.onChunk()
-    t.onChunk()
-    t.onChunk()
-    const c1 = t.onChunk()
-    const c2 = t.onChunk()
-    expect(c2).toBeGreaterThan(c1)
-  })
-
-  test('callback fires at interval', () => {
-    const calls: number[] = []
-    const t = new StreamingCostTracker(
-      'openai', 'gpt-4o', 0,
-      (cost) => calls.push(cost),
-      3
-    )
-    for (let i = 0; i < 6; i++) t.onChunk()
-    expect(calls.length).toBe(2)
-  })
-
-  test('callback not fired before interval', () => {
-    const calls: number[] = []
-    const t = new StreamingCostTracker(
-      'openai', 'gpt-4o', 0,
-      (cost) => calls.push(cost),
-      10
-    )
-    for (let i = 0; i < 5; i++) t.onChunk()
-    expect(calls.length).toBe(0)
-  })
-
-  test('finalize uses actual tokens', () => {
-    const t = new StreamingCostTracker('openai', 'gpt-4o', 0)
-    const final = t.finalize(1000, 500)
-    // $0.0000025*1000 + $0.00001*500 = $0.0075
-    expect(final).toBeCloseTo(0.0075, 4)
-  })
-
-  test('finalize falls back to estimate when no actual tokens', () => {
-    const t = new StreamingCostTracker('openai', 'gpt-4o-mini', 100)
-    for (let i = 0; i < 5; i++) t.onChunk()
-    const estimated = (t as any)['estimatedCost']
-    const final = t.finalize(0, 0)
-    expect(final).toBe(estimated)
-  })
-
-  test('callback error does not throw', () => {
-    const t = new StreamingCostTracker(
-      'openai', 'gpt-4o', 0,
-      () => { throw new Error('callback error') },
-      1
-    )
-    expect(() => t.onChunk()).not.toThrow()
-  })
-
-  test('finalize fires final callback', () => {
-    const calls: number[] = []
-    const t = new StreamingCostTracker(
-      'openai', 'gpt-4o', 0,
-      (cost) => calls.push(cost),
-      100
-    )
-    t.finalize(500, 250)
-    expect(calls.length).toBe(1)
-  })
-
-  test('all openai models have rates', () => {
-    const models = [
-      'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo',
-      'gpt-3.5-turbo', 'o1', 'o1-mini', 'o3-mini'
-    ]
-    for (const model of models) {
-      const t = new StreamingCostTracker('openai', model, 0)
-      t.onChunk()
-      expect((t as any)['estimatedCost']).toBeGreaterThan(0)
-    }
-  })
-
-  test('all anthropic models have rates', () => {
-    const models = [
-      'claude-3-5-sonnet-20241022',
-      'claude-3-haiku-20240307',
-      'claude-3-opus-20240229',
-    ]
-    for (const model of models) {
-      const t = new StreamingCostTracker('anthropic', model, 0)
-      t.onChunk()
-      expect((t as any)['estimatedCost']).toBeGreaterThan(0)
-    }
-  })
-})
 
 describe('wrapOpenAI', () => {
 
@@ -229,29 +115,6 @@ describe('wrapOpenAI', () => {
     const wrapped = wrapOpenAI(mockOpenAI, client) as any
     expect(wrapped.models).toBe(mockOpenAI.models)
     expect(wrapped.apiKey).toBe('test')
-    fs.rmSync(tmpDir, { recursive: true, force: true })
-  })
-
-  test('removes onToken from params before calling OpenAI', async () => {
-    const { client, tmpDir } = makeClient()
-
-    const mockCreate = jest.fn().mockResolvedValue({
-      usage: { prompt_tokens: 10, completion_tokens: 5 }
-    })
-    const mockOpenAI = {
-      chat: { completions: { create: mockCreate } }
-    }
-
-    const wrapped = wrapOpenAI(mockOpenAI, client)
-    await (wrapped as any).chat.completions.create({
-      model: 'gpt-4o',
-      messages: [],
-      onToken: jest.fn()
-    })
-
-    const calledWith = mockCreate.mock.calls[0][0]
-    expect(calledWith.onToken).toBeUndefined()
-
     fs.rmSync(tmpDir, { recursive: true, force: true })
   })
 
