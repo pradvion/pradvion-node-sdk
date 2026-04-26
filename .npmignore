@@ -1,0 +1,5 @@
+.claude/
+tests/
+jest.config.js
+tsconfig.json
+scripts/

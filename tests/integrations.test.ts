@@ -21,7 +21,7 @@ describe('PradvionCallbackHandler', () => {
 
   test('creates with options', () => {
     const handler = new PradvionCallbackHandler({
-      customerId: 'samsung',
+      customerId: 'my-company',
       feature: 'chatbot',
     })
     expect(handler).toBeDefined()
@@ -46,7 +46,7 @@ describe('PradvionCallbackHandler', () => {
     const { client, tmpDir } = makeClient()
     const handler = new PradvionCallbackHandler({
       pradvionClient: client,
-      customerId: 'samsung',
+      customerId: 'my-company',
     })
 
     await handler.handleLLMStart(

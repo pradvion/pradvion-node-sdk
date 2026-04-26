@@ -4,7 +4,7 @@ describe('createSignalPayload', () => {
 
   test('creates valid payload', () => {
     const p = createSignalPayload({
-      customerId: 'samsung',
+      customerId: 'my-company',
       event: 'email_sent',
       quantity: 5,
       value: 0.25,

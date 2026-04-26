@@ -41,7 +41,7 @@ describe('PradvionClient', () => {
       inputTokens: 100,
       outputTokens: 50,
       latencyMs: 1200,
-      customerId: 'samsung_001',
+      customerId: 'my-company_001',
     })
     const pending = client.queue.getPending()
     expect(pending[0].payload).not.toHaveProperty('customerId')
@@ -76,7 +76,7 @@ describe('PradvionClient', () => {
 
   test('signal queues signal event', () => {
     client.signal({
-      customerId: 'samsung',
+      customerId: 'my-company',
       event: 'email_sent',
       quantity: 5,
       value: 0.25,

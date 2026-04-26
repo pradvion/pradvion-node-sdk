@@ -41,7 +41,7 @@ const client = pradvion.monitor(new OpenAI())
 await pradvion.context(
   {
     feature: "resume-summarizer",
-    customerId: "samsung-001",   // hashed with SHA-256 before sending
+    customerId: "customer-001",   // hashed with SHA-256 before sending
     team: "hr-team",
     environment: "production",
   },
@@ -88,7 +88,7 @@ for await (const chunk of stream) {
 Pass a customer ID string directly:
 
 ```typescript
-const result = await pradvion.trace("samsung-001", async () => {
+const result = await pradvion.trace("customer-001", async () => {
   return await client.chat.completions.create({
     model: "gpt-4o",
     messages: [{ role: "user", content: "Hello" }],
@@ -104,7 +104,7 @@ All parameters are optional:
 await pradvion.context(
   {
     feature: "resume-summarizer",   // what the AI is doing
-    customerId: "samsung-001",      // auto-hashed with SHA-256
+    customerId: "customer-001",      // auto-hashed with SHA-256
     team: "hr-team",                // team that owns this feature
     environment: "production",      // filters out test traffic in analytics
     conversationId: "run-abc-123",  // groups multi-step agent calls
@@ -141,7 +141,7 @@ Track the outcomes your AI produces — not just the cost.
 ```typescript
 // After an AI call creates a downstream result, record the signal
 pradvion.signal({
-  customerId: "samsung-001",   // links back to AI costs for this customer
+  customerId: "customer-001",   // links back to AI costs for this customer
   event: "meeting_booked",     // lowercase, snake_case
   quantity: 1,
   value: 150.00,               // dollar value of the outcome
@@ -151,9 +151,9 @@ pradvion.signal({
 
 // Batch version
 pradvion.signalBatch([
-  { customerId: "acme", event: "email_sent",     quantity: 50 },
-  { customerId: "acme", event: "meeting_booked", quantity: 3, value: 450.0 },
-  { customerId: "acme", event: "deal_closed",    quantity: 1, value: 12000.0 },
+  { customerId: "my-company", event: "email_sent",     quantity: 50 },
+  { customerId: "my-company", event: "meeting_booked", quantity: 3, value: 450.0 },
+  { customerId: "my-company", event: "deal_closed",    quantity: 1, value: 12000.0 },
 ])
 ```
 
@@ -171,7 +171,7 @@ const runId = pradvion.newConversation()  // generates a unique ID
 await pradvion.context(
   {
     feature: "research-agent",
-    customerId: "acme-corp",
+    customerId: "my-company",
     conversationId: runId,
     environment: "production",
   },
@@ -185,7 +185,7 @@ await pradvion.context(
 // All 3 calls appear in the dashboard linked by conversationId
 // Record the business outcome once the agent completes
 if (taskCompleted) {
-  pradvion.signal({ customerId: "acme-corp", event: "report_generated", quantity: 1, value: 50.0 })
+  pradvion.signal({ customerId: "my-company", event: "report_generated", quantity: 1, value: 50.0 })
 }
 ```
 
@@ -206,7 +206,7 @@ try {
     outputTokens: response.usage.completionTokens,
     latencyMs: Date.now() - start,
     statusCode: 200,
-    customerId: "acme-corp",
+    customerId: "my-company",
     feature: "chatbot",
   })
 } catch (err: any) {
@@ -242,7 +242,7 @@ pradvion.init({ apiKey: "nx_live_..." })
 
 const callback = new PradvionCallbackHandler({
   feature: "research-chain",
-  customerId: "acme-corp",
+  customerId: "my-company",
   environment: "production",
 })
 

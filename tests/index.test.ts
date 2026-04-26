@@ -94,7 +94,7 @@ describe('pradvion public API', () => {
       queuePath: path.join(tmpDir, 'queue.json'),
     })
     pradvion.signal({
-      customerId: 'samsung',
+      customerId: 'my-company',
       event: 'email_sent',
       quantity: 5,
     })
@@ -115,7 +115,7 @@ describe('pradvion public API', () => {
 
     let capturedCustomerId: string | undefined
 
-    await pradvion.trace('samsung_001', async () => {
+    await pradvion.trace('my-company_001', async () => {
       pradvion.track({
         provider: 'openai',
         model: 'gpt-4o',
@@ -127,7 +127,7 @@ describe('pradvion public API', () => {
       capturedCustomerId = getEffectiveContext().customerId
     })
 
-    expect(capturedCustomerId).toBe('samsung_001')
+    expect(capturedCustomerId).toBe('my-company_001')
   })
 
   test('flush resolves without error', async () => {

@@ -15,17 +15,17 @@ describe('Context', () => {
   test('runWithContext propagates context', async () => {
     let captured: any = null
     await runWithContext(
-      { customerId: 'samsung' },
+      { customerId: 'my-company' },
       async () => {
         captured = getCurrentContext()
       }
     )
-    expect(captured?.customerId).toBe('samsung')
+    expect(captured?.customerId).toBe('my-company')
   })
 
   test('context not visible outside runWithContext', async () => {
     await runWithContext(
-      { customerId: 'samsung' },
+      { customerId: 'my-company' },
       async () => {}
     )
     const ctx = getCurrentContext()
